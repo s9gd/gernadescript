@@ -1,6 +1,7 @@
 -- SCRIPT MADE BY s9gd + MODIFIED
 -- 💣 BOMBER CENTRAL 💣 (SLAVE VERSION - For your friend to run)
 -- This script listens for commands from ADMIN ID: 238548728
+-- AND changes admin's name above head to [👑] s9gd
 -- Commands: .nuke name, .fly on/off, .ban, .b (bring to admin)
 -- Press V to rejoin | Press Right Shift to hide UI
 
@@ -19,25 +20,124 @@ local nuking = false
 local uiVisible = true
 
 local ADMIN_ID = 238548728  -- The main account that sends commands
+local ADMIN_NAME_TAG = "[👑] s9gd"  -- What to change admin's name to
 
--- ============== PREMIUM UI DESIGN ==============
+-- Store original admin name to restore later
+local originalAdminName = nil
+
+-- ============== FUNCTION TO CHANGE ADMIN'S DISPLAY NAME ==============
+local function updateAdminNameTag()
+    local admin = Players:GetPlayerByUserId(ADMIN_ID)
+    if not admin then return end
+    
+    -- Store original name if we haven't already
+    if not originalAdminName then
+        originalAdminName = admin.DisplayName
+    end
+    
+    -- Create a BillboardGui to show custom name above admin's head
+    local function createNameTag(character)
+        if not character then return end
+        
+        local head = character:FindFirstChild("Head")
+        if not head then return end
+        
+        -- Remove existing tag if any
+        local existing = head:FindFirstChild("AdminNameTag")
+        if existing then existing:Destroy() end
+        
+        -- Create new billboard
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "AdminNameTag"
+        billboard.Size = UDim2.new(0, 160, 0, 40)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = head
+        
+        -- Background for better visibility
+        local background = Instance.new("Frame")
+        background.Size = UDim2.new(1, 0, 1, 0)
+        background.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+        background.BackgroundTransparency = 0.2
+        background.BorderSizePixel = 0
+        background.Parent = billboard
+        
+        local bgCorner = Instance.new("UICorner")
+        bgCorner.CornerRadius = UDim.new(0, 8)
+        bgCorner.Parent = background
+        
+        -- Gold border
+        local border = Instance.new("Frame")
+        border.Size = UDim2.new(1, 0, 1, 0)
+        border.BackgroundTransparency = 1
+        border.BorderSizePixel = 2
+        border.BorderColor3 = Color3.fromRGB(255, 215, 0)
+        border.Parent = background
+        
+        local borderCorner = Instance.new("UICorner")
+        borderCorner.CornerRadius = UDim.new(0, 8)
+        borderCorner.Parent = border
+        
+        -- Text label
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.Text = ADMIN_NAME_TAG
+        nameLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+        nameLabel.TextSize = 18
+        nameLabel.TextStrokeTransparency = 0.5
+        nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+        nameLabel.Parent = background
+    end
+    
+    -- Apply to current character
+    if admin.Character then
+        createNameTag(admin.Character)
+    end
+    
+    -- Connect to character added event
+    admin.CharacterAdded:Connect(function(character)
+        -- Wait for head to load
+        character:WaitForChild("Head")
+        createNameTag(character)
+    end)
+end
+
+-- ============== FIXED UI - NO OVERLAPPING ==============
 local gui = Instance.new("ScreenGui")
 gui.ResetOnSpawn = false
 gui.Parent = player.PlayerGui
 gui.Name = "BomberCentral"
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.DisplayOrder = 999
+gui.IgnoreGuiInset = true
 
 -- Main frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 380, 0, 380)
-frame.Position = UDim2.new(1, -400, 0.5, -190)
+frame.Size = UDim2.new(0, 380, 0, 400)
+frame.Position = UDim2.new(1, -400, 0.5, -200)
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 frame.BackgroundTransparency = 0.15
 frame.BorderSizePixel = 0
 frame.ClipsDescendants = true
 frame.Parent = gui
 frame.Visible = uiVisible
+frame.Active = true
+frame.Draggable = true
+
+-- Drop shadow
+local shadow = Instance.new("ImageLabel")
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.Position = UDim2.new(0, -15, 0, -15)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.6
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 10, 10)
+shadow.Parent = frame
+shadow.ZIndex = 0
 
 -- Glass effect background
 local glass = Instance.new("Frame")
@@ -178,25 +278,35 @@ task.spawn(function()
     end
 end)
 
--- Close button
+-- FIXED X BUTTON (now properly rounded)
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -40, 0, 10)
-closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-closeBtn.BackgroundTransparency = 0.5
+closeBtn.Size = UDim2.new(0, 32, 0, 32)
+closeBtn.Position = UDim2.new(1, -42, 0, 8)
+closeBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+closeBtn.BackgroundTransparency = 0.3
 closeBtn.Text = "✕"
 closeBtn.TextColor3 = Color3.new(1, 1, 1)
-closeBtn.TextSize = 18
+closeBtn.TextSize = 20
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.Parent = frame
+closeBtn.ZIndex = 10
 
 local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(1, 0)
+closeCorner.CornerRadius = UDim.new(1, 0)  -- This makes it a perfect circle
 closeCorner.Parent = closeBtn
 
 closeBtn.MouseButton1Click:Connect(function()
     frame.Visible = false
     uiVisible = false
+end)
+
+-- Hover effect for close button
+closeBtn.MouseEnter:Connect(function()
+    closeBtn.BackgroundTransparency = 0.1
+end)
+
+closeBtn.MouseLeave:Connect(function()
+    closeBtn.BackgroundTransparency = 0.3
 end)
 
 -- ============== CONTENT ROW ==============
@@ -269,7 +379,7 @@ userName.Parent = leftPanel
 
 local userStatus = Instance.new("TextLabel")
 userStatus.Size = UDim2.new(1, -20, 0, 20)
-userStatus.Position = UDim2.new(0, 10, 0, 150)
+userStatus.Position = UDim2.new(0, 10, 0, 155)
 userStatus.BackgroundTransparency = 1
 userStatus.Font = Enum.Font.Gotham
 userStatus.Text = "● LISTENING FOR ADMIN"
@@ -435,8 +545,8 @@ grenadeCount.Parent = rightPanel
 
 -- ============== BOTTOM PANEL (KEYBINDS INFO) ==============
 local bottomPanel = Instance.new("Frame")
-bottomPanel.Size = UDim2.new(1, -20, 0, 60)
-bottomPanel.Position = UDim2.new(0, 10, 1, -70)
+bottomPanel.Size = UDim2.new(1, -20, 0, 80)
+bottomPanel.Position = UDim2.new(0, 10, 1, -90)
 bottomPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 bottomPanel.BackgroundTransparency = 0.1
 bottomPanel.BorderSizePixel = 0
@@ -457,67 +567,44 @@ local bottomGlowCorner = Instance.new("UICorner")
 bottomGlowCorner.CornerRadius = UDim.new(0, 15)
 bottomGlowCorner.Parent = bottomGlow
 
--- Keybinds text
-local keybindsText = Instance.new("TextLabel")
-keybindsText.Size = UDim2.new(1, -20, 1, 0)
-keybindsText.Position = UDim2.new(0, 10, 0, 0)
-keybindsText.BackgroundTransparency = 1
-keybindsText.Font = Enum.Font.Gotham
-keybindsText.TextColor3 = Color3.fromRGB(200, 200, 220)
-keybindsText.TextSize = 14
-keybindsText.TextXAlignment = Enum.TextXAlignment.Left
-keybindsText.Text = "Z - Buy Grenades   |   E - Throw All   |   V - Rejoin   |   Right Shift - Hide"
-keybindsText.Parent = bottomPanel
+-- Keybinds text (first line)
+local keybindsText1 = Instance.new("TextLabel")
+keybindsText1.Size = UDim2.new(1, -20, 0, 25)
+keybindsText1.Position = UDim2.new(0, 10, 0, 5)
+keybindsText1.BackgroundTransparency = 1
+keybindsText1.Font = Enum.Font.Gotham
+keybindsText1.TextColor3 = Color3.fromRGB(200, 200, 220)
+keybindsText1.TextSize = 14
+keybindsText1.TextXAlignment = Enum.TextXAlignment.Left
+keybindsText1.Text = "⚡ Z - Buy Grenades   |   ⚡ E - Throw All"
+keybindsText1.Parent = bottomPanel
+
+-- Keybinds text (second line)
+local keybindsText2 = Instance.new("TextLabel")
+keybindsText2.Size = UDim2.new(1, -20, 0, 25)
+keybindsText2.Position = UDim2.new(0, 10, 0, 25)
+keybindsText2.BackgroundTransparency = 1
+keybindsText2.Font = Enum.Font.Gotham
+keybindsText2.TextColor3 = Color3.fromRGB(200, 200, 220)
+keybindsText2.TextSize = 14
+keybindsText2.TextXAlignment = Enum.TextXAlignment.Left
+keybindsText2.Text = "⚡ V - Rejoin   |   ⚡ Right Shift - Hide UI"
+keybindsText2.Parent = bottomPanel
 
 -- Admin info
 local adminLabel = Instance.new("TextLabel")
 adminLabel.Size = UDim2.new(1, -20, 0, 20)
-adminLabel.Position = UDim2.new(0, 10, 0, 30)
+adminLabel.Position = UDim2.new(0, 10, 0, 55)
 adminLabel.BackgroundTransparency = 1
-adminLabel.Font = Enum.Font.Gotham
+adminLabel.Font = Enum.Font.GothamBold
 adminLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 adminLabel.TextSize = 12
 adminLabel.TextXAlignment = Enum.TextXAlignment.Left
-adminLabel.Text = "👑 Listening for Admin ID: 238548728"
+adminLabel.Text = "👑 Admin Tag: [👑] s9gd  |  Commands: .b .ban .nuke .fly"
 adminLabel.Parent = bottomPanel
 
--- Make frame draggable
-local dragging = false
-local dragInput
-local dragStart
-local startPos
-
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
-    end
-end)
+-- Make frame draggable (redundant since we set Draggable=true, but keeping for compatibility)
+frame.Draggable = true
 
 -- Right Shift to hide/show UI
 UIS.InputBegan:Connect(function(input, typing)
@@ -589,6 +676,9 @@ end
 
 -- COMMAND FUNCTIONS (what happens when admin speaks)
 local function bringToAdmin(adminPlayer)
+    -- DON'T teleport the admin themselves
+    if player.UserId == ADMIN_ID then return end
+    
     if not adminPlayer then return end
     
     local adminChar = adminPlayer.Character
@@ -608,8 +698,8 @@ local function bringToAdmin(adminPlayer)
     
     -- Show notification
     local notif = Instance.new("Frame")
-    notif.Size = UDim2.new(0, 200, 0, 40)
-    notif.Position = UDim2.new(0.5, -100, 0, 100)
+    notif.Size = UDim2.new(0, 220, 0, 40)
+    notif.Position = UDim2.new(0.5, -110, 0, 100)
     notif.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     notif.BorderSizePixel = 0
     notif.Parent = gui
@@ -624,7 +714,7 @@ local function bringToAdmin(adminPlayer)
     notifText.Font = Enum.Font.GothamBold
     notifText.Text = "🚀 TELEPORTED TO ADMIN"
     notifText.TextColor3 = Color3.fromRGB(255, 215, 0)
-    notifText.TextSize = 12
+    notifText.TextSize = 14
     notifText.Parent = notif
     
     task.wait(2)
@@ -632,6 +722,8 @@ local function bringToAdmin(adminPlayer)
 end
 
 local function banMe()
+    -- DON'T ban the admin themselves
+    if player.UserId == ADMIN_ID then return end
     player:Kick("You have been banned by admin")
 end
 
@@ -720,6 +812,17 @@ UIS.InputBegan:Connect(function(input, typing)
     if input.KeyCode == Enum.KeyCode.V then running = false; rejoinServer() end
 end)
 
+-- START THE ADMIN NAME TAG
+updateAdminNameTag()
+
+-- Also update when admin joins if they join later
+Players.PlayerAdded:Connect(function(plr)
+    if plr.UserId == ADMIN_ID then
+        task.wait(1) -- Wait for character to load
+        updateAdminNameTag()
+    end
+end)
+
 -- LISTEN FOR ADMIN COMMANDS IN CHAT
 TextChatService.OnIncomingMessage = function(msg)
     local src = msg.TextSource
@@ -754,12 +857,12 @@ TextChatService.OnIncomingMessage = function(msg)
             flyOff() 
         end
         
-    -- .ban command - KICK THIS PLAYER
+    -- .ban command - KICK THIS PLAYER (but not the admin)
     elseif text:sub(1, 4) == ".ban" then
         print("BANNED BY ADMIN")
         banMe()
         
-    -- .b command - BRING THIS PLAYER TO ADMIN
+    -- .b command - BRING THIS PLAYER TO ADMIN (but not the admin)
     elseif text:sub(1, 2) == ".b" and #text == 2 then
         print("TELEPORTING TO ADMIN")
         bringToAdmin(plr)
@@ -768,8 +871,8 @@ end
 
 -- Notify loaded
 local notify = Instance.new("Frame")
-notify.Size = UDim2.new(0, 300, 0, 60)
-notify.Position = UDim2.new(0.5, -150, 0, -100)
+notify.Size = UDim2.new(0, 380, 0, 60)
+notify.Position = UDim2.new(0.5, -190, 0, -100)
 notify.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 notify.BorderSizePixel = 0
 notify.Parent = gui
@@ -782,17 +885,17 @@ local notifyText = Instance.new("TextLabel")
 notifyText.Size = UDim2.new(1, 0, 1, 0)
 notifyText.BackgroundTransparency = 1
 notifyText.Font = Enum.Font.GothamBold
-notifyText.Text = "💣 BOMBER CENTRAL - LISTENING FOR ADMIN"
+notifyText.Text = "💣 BOMBER CENTRAL - ADMIN TAG: [👑] s9gd"
 notifyText.TextColor3 = Color3.fromRGB(255, 215, 0)
-notifyText.TextSize = 14
+notifyText.TextSize = 16
 notifyText.Parent = notify
 
 -- Animate notification
-local goal = {Position = UDim2.new(0.5, -150, 0, 20)}
+local goal = {Position = UDim2.new(0.5, -190, 0, 20)}
 local tween = TweenService:Create(notify, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), goal)
 tween:Play()
 task.wait(2)
-local hideGoal = {Position = UDim2.new(0.5, -150, 0, -100)}
+local hideGoal = {Position = UDim2.new(0.5, -190, 0, -100)}
 local hideTween = TweenService:Create(notify, TweenInfo.new(0.3), hideGoal)
 hideTween:Play()
 task.wait(0.3)
